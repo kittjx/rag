@@ -1,0 +1,451 @@
+// 配置
+const API_BASE_URL = 'http://localhost:8000';
+
+// 全局状态
+let currentChatId = null;
+let chatHistory = [];
+let isProcessing = false;
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    setupEventListeners();
+    loadChatHistory();
+});
+
+// 初始化应用
+async function initializeApp() {
+    await loadSystemInfo();
+    await loadBackends();
+}
+
+// 加载系统信息
+async function loadSystemInfo() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/system/version`);
+        const data = await response.json();
+        
+        document.getElementById('backendName').textContent = data.components.llm_backend;
+        document.getElementById('modelName').textContent = data.components.llm_model;
+    } catch (error) {
+        console.error('加载系统信息失败:', error);
+        document.getElementById('backendName').textContent = '未知';
+        document.getElementById('modelName').textContent = '未知';
+    }
+}
+
+// 加载可用后端
+async function loadBackends() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/system/llm/backends`);
+        const data = await response.json();
+        
+        const select = document.getElementById('backendSelect');
+        select.innerHTML = '';
+        
+        data.available_backends.forEach(backend => {
+            const option = document.createElement('option');
+            option.value = backend.name;
+            option.textContent = `${backend.name} (${backend.model})`;
+            if (backend.name === data.current_backend) {
+                option.selected = true;
+            }
+            if (!backend.healthy) {
+                option.disabled = true;
+                option.textContent += ' - 不可用';
+            }
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('加载后端列表失败:', error);
+    }
+}
+
+// 切换后端
+async function switchBackend(backend) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/system/llm/switch/${backend}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            await loadSystemInfo();
+            showNotification('后端切换成功', 'success');
+        } else {
+            showNotification(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('切换后端失败:', error);
+        showNotification('切换后端失败', 'error');
+    }
+}
+
+// 设置事件监听器
+function setupEventListeners() {
+    const input = document.getElementById('questionInput');
+    
+    // 自动调整输入框高度
+    input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = input.scrollHeight + 'px';
+    });
+    
+    // Ctrl+Enter 发送
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+}
+
+// 新建对话
+function newChat() {
+    currentChatId = Date.now().toString();
+    document.getElementById('messagesContainer').innerHTML = `
+        <div class="welcome-message">
+            <div class="welcome-icon">🤖</div>
+            <h2>新对话</h2>
+            <p>我可以基于知识库内容回答您的问题</p>
+        </div>
+    `;
+    document.getElementById('questionInput').value = '';
+    document.getElementById('questionInput').focus();
+}
+
+// 示例问题
+function askExample(question) {
+    document.getElementById('questionInput').value = question;
+    sendMessage();
+}
+
+// 发送消息
+async function sendMessage() {
+    const input = document.getElementById('questionInput');
+    const question = input.value.trim();
+    
+    if (!question || isProcessing) return;
+    
+    // 清空输入框
+    input.value = '';
+    input.style.height = 'auto';
+    
+    // 如果是新对话，创建ID
+    if (!currentChatId) {
+        currentChatId = Date.now().toString();
+    }
+    
+    // 移除欢迎消息
+    const welcomeMsg = document.querySelector('.welcome-message');
+    if (welcomeMsg) {
+        welcomeMsg.remove();
+    }
+    
+    // 添加用户消息
+    addMessage('user', question);
+    
+    // 添加助手消息占位符
+    const assistantMsgId = addMessage('assistant', '', true);
+    
+    // 禁用发送按钮
+    isProcessing = true;
+    updateSendButton(true);
+    
+    // 获取设置
+    const settings = getSettings();
+    
+    try {
+        if (settings.streamMode) {
+            await sendStreamMessage(question, settings, assistantMsgId);
+        } else {
+            await sendNormalMessage(question, settings, assistantMsgId);
+        }
+        
+        // 保存到历史
+        saveChatHistory(question);
+    } catch (error) {
+        console.error('发送消息失败:', error);
+        updateMessageContent(assistantMsgId, '抱歉，发生了错误。请稍后重试。');
+    } finally {
+        isProcessing = false;
+        updateSendButton(false);
+    }
+}
+
+// 流式消息
+async function sendStreamMessage(question, settings, messageId) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            question: question,
+            top_k: settings.topK,
+            temperature: settings.temperature,
+            use_cache: settings.useCache
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let sources = null;
+
+    // 移除打字指示器
+    removeTypingIndicator(messageId);
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+
+                if (data === '[DONE]') {
+                    continue;
+                }
+
+                try {
+                    const json = JSON.parse(data);
+
+                    // 处理来源信息
+                    if (json.sources) {
+                        sources = json.sources;
+                    }
+
+                    // 处理内容
+                    if (json.content !== undefined) {
+                        fullText += json.content;
+                        updateMessageContent(messageId, fullText);
+                    }
+                } catch (e) {
+                    console.error('解析JSON失败:', e);
+                }
+            }
+        }
+    }
+
+    // 添加来源
+    if (sources) {
+        addSourcesToMessage(messageId, sources);
+    }
+}
+
+// 普通消息
+async function sendNormalMessage(question, settings, messageId) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            question: question,
+            top_k: settings.topK,
+            temperature: settings.temperature,
+            use_cache: settings.useCache
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // 移除打字指示器
+    removeTypingIndicator(messageId);
+
+    // 更新消息内容
+    updateMessageContent(messageId, data.answer);
+
+    // 添加来源
+    if (data.sources) {
+        addSourcesToMessage(messageId, data.sources);
+    }
+}
+
+// 添加消息
+function addMessage(role, content, showTyping = false) {
+    const container = document.getElementById('messagesContainer');
+    const messageId = `msg-${Date.now()}`;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    messageDiv.id = messageId;
+
+    const avatar = role === 'user' ? '👤' : '🤖';
+
+    messageDiv.innerHTML = `
+        <div class="message-avatar">${avatar}</div>
+        <div class="message-content">
+            <div class="message-text">${content}</div>
+            ${showTyping ? '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>' : ''}
+        </div>
+    `;
+
+    container.appendChild(messageDiv);
+    scrollToBottom();
+
+    return messageId;
+}
+
+// 更新消息内容
+function updateMessageContent(messageId, content) {
+    const message = document.getElementById(messageId);
+    if (message) {
+        const textDiv = message.querySelector('.message-text');
+        textDiv.textContent = content;
+        scrollToBottom();
+    }
+}
+
+// 移除打字指示器
+function removeTypingIndicator(messageId) {
+    const message = document.getElementById(messageId);
+    if (message) {
+        const indicator = message.querySelector('.typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+}
+
+// 添加来源到消息
+function addSourcesToMessage(messageId, sources) {
+    const message = document.getElementById(messageId);
+    if (!message || !sources || sources.length === 0) return;
+
+    const content = message.querySelector('.message-content');
+
+    const sourcesDiv = document.createElement('div');
+    sourcesDiv.className = 'message-sources';
+    sourcesDiv.innerHTML = '<h4>📚 参考来源</h4>';
+
+    sources.forEach((source, idx) => {
+        const sourceItem = document.createElement('div');
+        sourceItem.className = 'source-item';
+
+        const score = (source.score * 100).toFixed(1);
+        const text = source.text.length > 100 ? source.text.substring(0, 100) + '...' : source.text;
+        const filename = source.metadata?.filename || '未知文件';
+
+        sourceItem.innerHTML = `
+            <div class="source-score">来源 ${idx + 1} · 相似度: ${score}%</div>
+            <div class="source-text">${text}</div>
+            <div class="source-file">📄 ${filename}</div>
+        `;
+
+        sourcesDiv.appendChild(sourceItem);
+    });
+
+    content.appendChild(sourcesDiv);
+}
+
+// 获取设置
+function getSettings() {
+    return {
+        topK: parseInt(document.getElementById('topK').value),
+        temperature: parseFloat(document.getElementById('temperature').value),
+        useCache: document.getElementById('useCache').checked,
+        streamMode: document.getElementById('streamMode').checked
+    };
+}
+
+// 更新发送按钮状态
+function updateSendButton(disabled) {
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = disabled;
+    btn.innerHTML = disabled ? '<span class="send-icon">⏳</span>' : '<span class="send-icon">📤</span>';
+}
+
+// 滚动到底部
+function scrollToBottom() {
+    const container = document.getElementById('messagesContainer');
+    container.scrollTop = container.scrollHeight;
+}
+
+// 切换设置面板
+function toggleSettings() {
+    const panel = document.getElementById('settingsPanel');
+    panel.classList.toggle('open');
+}
+
+// 更新设置值显示
+function updateTopKValue(value) {
+    document.getElementById('topKValue').textContent = value;
+}
+
+function updateTemperatureValue(value) {
+    document.getElementById('temperatureValue').textContent = value;
+}
+
+// 保存对话历史
+function saveChatHistory(question) {
+    const title = question.length > 30 ? question.substring(0, 30) + '...' : question;
+
+    chatHistory.unshift({
+        id: currentChatId,
+        title: title,
+        timestamp: Date.now()
+    });
+
+    // 只保留最近20条
+    if (chatHistory.length > 20) {
+        chatHistory = chatHistory.slice(0, 20);
+    }
+
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+    renderChatHistory();
+}
+
+// 加载对话历史
+function loadChatHistory() {
+    const saved = localStorage.getItem('chatHistory');
+    if (saved) {
+        chatHistory = JSON.parse(saved);
+        renderChatHistory();
+    }
+}
+
+// 渲染对话历史
+function renderChatHistory() {
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+
+    chatHistory.forEach(chat => {
+        const item = document.createElement('button');
+        item.className = 'history-item';
+        if (chat.id === currentChatId) {
+            item.classList.add('active');
+        }
+        item.textContent = chat.title;
+        item.onclick = () => loadChat(chat.id);
+        list.appendChild(item);
+    });
+}
+
+// 加载对话
+function loadChat(chatId) {
+    // 这里可以实现加载历史对话的功能
+    // 目前简单地创建新对话
+    currentChatId = chatId;
+    renderChatHistory();
+}
+
+// 显示通知
+function showNotification(message, type = 'info') {
+    // 简单的通知实现
+    console.log(`[${type}] ${message}`);
+    // 可以扩展为更好的UI通知
+}
+

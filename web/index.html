@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库问答系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>💬 知识库问答</h1>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- 新对话按钮 -->
+                <button class="new-chat-btn" onclick="newChat()">
+                    <span>➕</span> 新对话
+                </button>
+                
+                <!-- 对话历史 -->
+                <div class="chat-history">
+                    <h3>对话历史</h3>
+                    <div id="historyList" class="history-list">
+                        <!-- 历史记录将动态添加 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 系统信息 -->
+            <div class="sidebar-footer">
+                <div class="system-info">
+                    <div class="info-item">
+                        <span class="label">后端:</span>
+                        <span id="backendName" class="value">加载中...</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">模型:</span>
+                        <span id="modelName" class="value">加载中...</span>
+                    </div>
+                </div>
+                <button class="settings-btn" onclick="toggleSettings()">
+                    ⚙️ 设置
+                </button>
+            </div>
+        </aside>
+        
+        <!-- 主聊天区域 -->
+        <main class="chat-main">
+            <!-- 顶部栏 -->
+            <header class="chat-header">
+                <h2>知识库智能问答</h2>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="toggleSettings()" title="设置">
+                        ⚙️
+                    </button>
+                </div>
+            </header>
+            
+            <!-- 消息区域 -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- 欢迎消息 -->
+                <div class="welcome-message">
+                    <div class="welcome-icon">🤖</div>
+                    <h2>欢迎使用知识库问答系统</h2>
+                    <p>我可以基于知识库内容回答您的问题</p>
+                    <div class="example-questions">
+                        <p>试试这些问题：</p>
+                        <button class="example-btn" onclick="askExample('什么是健康的生活方式？')">
+                            什么是健康的生活方式？
+                        </button>
+                        <button class="example-btn" onclick="askExample('如何保持良好的睡眠？')">
+                            如何保持良好的睡眠？
+                        </button>
+                        <button class="example-btn" onclick="askExample('运动对健康有什么好处？')">
+                            运动对健康有什么好处？
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 输入区域 -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="questionInput" 
+                        placeholder="输入您的问题... (Ctrl+Enter 发送)"
+                        rows="1"
+                    ></textarea>
+                    <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+                        <span class="send-icon">📤</span>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <small>基于知识库的智能问答 · 支持流式响应</small>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 设置面板 -->
+        <div id="settingsPanel" class="settings-panel">
+            <div class="settings-content">
+                <div class="settings-header">
+                    <h3>⚙️ 设置</h3>
+                    <button class="close-btn" onclick="toggleSettings()">✕</button>
+                </div>
+                
+                <div class="settings-body">
+                    <div class="setting-group">
+                        <label for="topK">检索数量 (Top K)</label>
+                        <input type="range" id="topK" min="1" max="10" value="5" oninput="updateTopKValue(this.value)">
+                        <span id="topKValue">5</span>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="temperature">温度 (Temperature)</label>
+                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" oninput="updateTemperatureValue(this.value)">
+                        <span id="temperatureValue">0.7</span>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="useCache" checked>
+                            使用缓存
+                        </label>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="streamMode" checked>
+                            流式响应
+                        </label>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="backendSelect">LLM 后端</label>
+                        <select id="backendSelect" onchange="switchBackend(this.value)">
+                            <option value="">加载中...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
+

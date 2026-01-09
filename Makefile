@@ -1,12 +1,13 @@
-.PHONY: help install build start dev test test-llm test-stream clean stats redis-start redis-stop redis-logs
+.PHONY: help install build start dev web test test-llm test-stream clean stats redis-start redis-stop redis-logs
 
 help:
 	@echo "知识库问答系统 - 可用命令:"
 	@echo ""
 	@echo "  make install      - 安装依赖"
 	@echo "  make build        - 构建知识库"
-	@echo "  make start        - 启动服务（生产模式）"
-	@echo "  make dev          - 启动服务（开发模式）"
+	@echo "  make start        - 启动API服务（生产模式）"
+	@echo "  make dev          - 启动API服务（开发模式）"
+	@echo "  make web          - 启动Web界面"
 	@echo "  make test         - 运行API测试"
 	@echo "  make test-llm     - 测试LLM后端"
 	@echo "  make test-stream  - 测试流式问答"
@@ -36,6 +37,10 @@ start:
 dev:
 	@echo "🚀 启动服务（开发模式）..."
 	MODE=development bash start.sh
+
+web:
+	@echo "🌐 启动Web界面..."
+	bash start_web.sh
 
 test:
 	@echo "🧪 运行API测试..."
