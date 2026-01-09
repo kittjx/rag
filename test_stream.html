@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>流式问答测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #0066cc;
+        }
+        .sources {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+        .sources h3 {
+            margin-top: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .source-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 3px;
+        }
+        .answer {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        .answer.streaming {
+            border-left: 3px solid #007bff;
+        }
+        .error {
+            background: #ffe7e7;
+            color: #cc0000;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 流式问答测试</h1>
+        
+        <div class="input-group">
+            <label for="question">问题：</label>
+            <textarea id="question" placeholder="输入你的问题...">你好，请介绍一下自己</textarea>
+        </div>
+        
+        <div class="input-group">
+            <label for="topK">检索数量 (top_k)：</label>
+            <input type="number" id="topK" value="3" min="1" max="10">
+        </div>
+        
+        <div class="input-group">
+            <label for="temperature">温度 (temperature)：</label>
+            <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
+        </div>
+        
+        <button id="askBtn" onclick="askQuestion()">提问</button>
+        
+        <div id="info" class="info" style="display: none;"></div>
+        <div id="sources" class="sources" style="display: none;"></div>
+        <div id="answer" class="answer" style="display: none;"></div>
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function askQuestion() {
+            const question = document.getElementById('question').value;
+            const topK = parseInt(document.getElementById('topK').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const askBtn = document.getElementById('askBtn');
+            const answerDiv = document.getElementById('answer');
+            const sourcesDiv = document.getElementById('sources');
+            const infoDiv = document.getElementById('info');
+            const errorDiv = document.getElementById('error');
+            
+            // 重置显示
+            answerDiv.style.display = 'none';
+            sourcesDiv.style.display = 'none';
+            infoDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            answerDiv.textContent = '';
+            
+            // 禁用按钮
+            askBtn.disabled = true;
+            askBtn.textContent = '正在思考...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        top_k: topK,
+                        temperature: temperature
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                answerDiv.style.display = 'block';
+                answerDiv.classList.add('streaming');
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            
+                            if (data === '[DONE]') {
+                                answerDiv.classList.remove('streaming');
+                                continue;
+                            }
+                            
+                            try {
+                                const json = JSON.parse(data);
+                                
+                                // 处理来源信息
+                                if (json.sources) {
+                                    infoDiv.style.display = 'block';
+                                    infoDiv.innerHTML = `使用后端: <strong>${json.backend}</strong> | 模型: <strong>${json.model}</strong>`;
+                                    
+                                    sourcesDiv.style.display = 'block';
+                                    sourcesDiv.innerHTML = '<h3>📚 参考来源：</h3>';
+                                    json.sources.forEach((source, idx) => {
+                                        sourcesDiv.innerHTML += `
+                                            <div class="source-item">
+                                                <strong>来源 ${idx + 1}</strong> (相似度: ${(source.score * 100).toFixed(1)}%)<br>
+                                                ${source.text}<br>
+                                                <small>文件: ${source.metadata.filename}</small>
+                                            </div>
+                                        `;
+                                    });
+                                }
+                                
+                                // 处理内容
+                                if (json.content !== undefined) {
+                                    answerDiv.textContent += json.content;
+                                }
+                            } catch (e) {
+                                console.error('解析JSON失败:', e, data);
+                            }
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = '错误: ' + error.message;
+                console.error('Error:', error);
+            } finally {
+                askBtn.disabled = false;
+                askBtn.textContent = '提问';
+            }
+        }
+        
+        // 支持回车提交
+        document.getElementById('question').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
+

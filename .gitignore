@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Data directories
+data/raw_documents/*
+!data/raw_documents/.gitkeep
+data/processed_chunks/*
+!data/processed_chunks/.gitkeep
+data/vector_store/*
+!data/vector_store/.gitkeep
+data/cache/*
+!data/cache/.gitkeep
+
+# Models (large files)
+models/bge-large-zh/*
+!models/bge-large-zh/.gitkeep
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Distribution / packaging
+*.tar.gz
+*.zip
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+

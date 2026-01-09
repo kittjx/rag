@@ -1,0 +1,27 @@
+# requirements.txt
+fastapi
+uvicorn[standard]
+pydantic
+sentence-transformers
+chromadb
+langchain
+langchain-core
+langchain-text-splitters
+langchain-community
+pypdf
+python-docx
+openpyxl
+docx2txt
+unstructured
+
+redis
+httpx
+
+python-dotenv
+
+aiohttp
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+tiktoken
+psutil
