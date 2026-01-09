@@ -13,23 +13,54 @@
 - **缓存优化**: Redis 缓存提升响应速度
 - **流式输出**: 支持流式响应，提升用户体验
 - **RESTful API**: 完整的 FastAPI 接口
-- **🐳 Docker支持**: 一键启动 Redis
+- **🐳 Docker支持**: 完整的容器化部署方案
 
 ## 📋 系统要求
 
+### 本地开发
 - Python 3.8+
 - Redis (可选，用于缓存)
 - 4GB+ RAM (用于加载嵌入模型)
 
+### Docker部署 (推荐)
+- Docker 20.10+
+- Docker Compose 2.0+
+- 4GB+ 可用内存
+- 10GB+ 可用磁盘空间
+
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 🐳 方法1: Docker部署 (推荐，最简单)
+
+```bash
+# 1. 克隆项目
+git clone <repository-url>
+cd rag
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，添加你的 API keys
+
+# 3. 构建并启动
+bash docker-build.sh
+bash docker-deploy.sh
+
+# 4. 访问服务
+# API: http://localhost:8000
+# Web: http://localhost:8080
+```
+
+**就这么简单！** 详细说明请查看 [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+
+### 💻 方法2: 本地开发
+
+#### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 启动 Redis (可选但推荐)
+#### 2. 启动 Redis (可选但推荐)
 
 使用 Docker 启动 Redis：
 
@@ -43,7 +74,7 @@ docker run -d -p 6379:6379 --name rag-redis redis:alpine
 
 如果不使用 Redis，缓存功能将不可用，但不影响核心功能。
 
-### 3. 配置环境变量
+#### 3. 配置环境变量
 
 复制环境变量示例文件并编辑：
 
@@ -58,7 +89,7 @@ DEEPSEEK_API_KEY=your_api_key_here
 REDIS_URL=redis://localhost:6379
 ```
 
-### 4. 准备文档
+#### 4. 准备文档
 
 将文档放入 `data/raw_documents/` 目录：
 
@@ -67,7 +98,7 @@ mkdir -p data/raw_documents
 # 复制你的文档到这个目录
 ```
 
-### 5. 构建知识库
+#### 5. 构建知识库
 
 ```bash
 python scripts/build_knowledge_base.py
@@ -81,7 +112,7 @@ make build
 - 生成向量嵌入
 - 存储到 ChromaDB
 
-### 6. 启动服务
+#### 6. 启动服务
 
 ```bash
 # 生产模式
@@ -97,7 +128,7 @@ make dev
 
 服务将在 `http://localhost:8000` 启动
 
-### 5. 启动Web界面 (可选)
+#### 7. 启动Web界面 (可选)
 
 启动类似ChatGPT的Web界面：
 
@@ -289,6 +320,76 @@ rag/
 ├── start.sh              # 启动脚本
 └── README.md             # 项目文档
 ```
+
+## 🐳 Docker 部署
+
+### 快速部署
+
+```bash
+# 1. 构建镜像
+make docker-build
+# 或
+bash docker-build.sh
+
+# 2. 启动服务
+make docker-up
+# 或
+bash docker-deploy.sh
+
+# 3. 访问服务
+# API: http://localhost:8000
+# Web: http://localhost:8080
+```
+
+### Docker Compose 命令
+
+```bash
+# 启动所有服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 查看状态
+docker-compose ps
+
+# 停止服务
+docker-compose down
+
+# 重启服务
+docker-compose restart
+```
+
+### 在容器中构建知识库
+
+```bash
+# 将文档放入 data/raw_documents/
+cp your_documents/* data/raw_documents/
+
+# 在容器中构建知识库
+docker-compose exec api python scripts/build_knowledge_base.py
+
+# 查看知识库统计
+docker-compose exec api python scripts/manage_kb.py stats
+```
+
+### Docker 服务说明
+
+- **api**: FastAPI 后端服务 (端口 8000)
+- **web**: Web 界面服务 (端口 8080)
+- **redis**: Redis 缓存服务 (端口 6379)
+
+### 数据持久化
+
+数据通过 volumes 挂载，保存在宿主机：
+- `./data/raw_documents` - 原始文档
+- `./data/vector_store` - 向量数据库
+- `./logs` - 日志文件
+- `redis-data` - Redis 数据
+
+### 详细文档
+
+完整的 Docker 部署指南请查看: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
 
 ## ⚙️ 配置说明
 

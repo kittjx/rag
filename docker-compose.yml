@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Redis cache service
   redis:
     image: redis:7-alpine
     container_name: rag-redis
@@ -17,6 +18,71 @@ services:
       retries: 3
     networks:
       - rag-network
+
+  # API service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data directories
+      - ./data/raw_documents:/app/data/raw_documents
+      - ./data/processed_chunks:/app/data/processed_chunks
+      - ./data/vector_store:/app/data/vector_store
+      - ./data/cache:/app/data/cache
+      # Mount logs
+      - ./logs:/app/logs
+      # Mount models (optional, can be downloaded at runtime)
+      - ./models:/app/models
+    environment:
+      # Redis configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+
+      # LLM Backend configuration (set your API keys here or use .env file)
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - QWEN_API_KEY=${QWEN_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+
+      # Application settings
+      - APP_ENV=production
+      - LOG_LEVEL=INFO
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - rag-network
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+  # Web UI service
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-web
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./web:/app/web
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - rag-network
+    command: python3 serve_web.py
 
 volumes:
   redis-data:

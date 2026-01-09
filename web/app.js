@@ -1,5 +1,10 @@
 // 配置
-const API_BASE_URL = 'http://localhost:8000';
+// 使用 window.API_BASE_URL（在 index.html 中设置）或自动检测
+const API_BASE_URL = window.API_BASE_URL || (
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:8000'
+        : `${window.location.protocol}//${window.location.hostname}:8000`
+);
 
 // 全局状态
 let currentChatId = null;

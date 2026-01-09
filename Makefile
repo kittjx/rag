@@ -1,8 +1,9 @@
-.PHONY: help install build start dev web test test-llm test-stream clean stats redis-start redis-stop redis-logs
+.PHONY: help install build start dev web test test-llm test-stream clean stats redis-start redis-stop redis-logs docker-build docker-up docker-down docker-logs docker-restart
 
 help:
 	@echo "知识库问答系统 - 可用命令:"
 	@echo ""
+	@echo "本地开发:"
 	@echo "  make install      - 安装依赖"
 	@echo "  make build        - 构建知识库"
 	@echo "  make start        - 启动API服务（生产模式）"
@@ -13,6 +14,14 @@ help:
 	@echo "  make test-stream  - 测试流式问答"
 	@echo "  make stats        - 显示知识库统计"
 	@echo "  make clean        - 清理缓存和日志"
+	@echo ""
+	@echo "Docker部署:"
+	@echo "  make docker-build   - 构建Docker镜像"
+	@echo "  make docker-up      - 启动Docker服务"
+	@echo "  make docker-down    - 停止Docker服务"
+	@echo "  make docker-logs    - 查看Docker日志"
+	@echo "  make docker-restart - 重启Docker服务"
+	@echo "  make docker-ps      - 查看Docker状态"
 	@echo ""
 	@echo "Redis管理:"
 	@echo "  make redis-start  - 启动Redis (Docker)"
@@ -111,4 +120,34 @@ setup: install redis-start
 check-env:
 	@echo "🔍 检查环境..."
 	python check_setup.py
+
+# Docker部署
+docker-build:
+	@echo "🐳 构建Docker镜像..."
+	bash docker-build.sh
+
+docker-up:
+	@echo "🐳 启动Docker服务..."
+	bash docker-deploy.sh
+
+docker-down:
+	@echo "🐳 停止Docker服务..."
+	bash docker-stop.sh
+
+docker-logs:
+	@echo "🐳 查看Docker日志..."
+	docker-compose logs -f
+
+docker-restart:
+	@echo "🐳 重启Docker服务..."
+	docker-compose restart
+
+docker-ps:
+	@echo "🐳 Docker服务状态..."
+	docker-compose ps
+
+docker-clean:
+	@echo "🐳 清理Docker资源..."
+	docker-compose down -v
+	docker system prune -f
 

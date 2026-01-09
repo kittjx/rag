@@ -1,0 +1,87 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+*.egg
+.pytest_cache
+.coverage
+htmlcov
+
+# Virtual environments
+venv
+env
+ENV
+.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/*.log
+*.log
+
+# Cache and temporary files
+data/cache/*
+*.tmp
+*.temp
+
+# Documentation (not needed in container)
+*.md
+!README.md
+IMPROVEMENTS.md
+LLM_BACKENDS.md
+LLM_BACKEND_IMPLEMENTATION.md
+QUICKSTART.md
+REDIS_DOCKER.md
+WEB_INTERFACE_GUIDE.md
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Test files
+test_*.py
+test_*.html
+tests/
+
+# Models (will be downloaded at runtime or mounted)
+models/*
+!models/.gitkeep
+
+# Data (should be mounted as volumes)
+data/raw_documents/*
+data/processed_chunks/*
+data/vector_store/*
+!data/**/.gitkeep
+
+# Environment files (use docker-compose env)
+.env
+.env.*
+
+# Scripts not needed in production
+scripts/test_*.py
+
+# Backup files
+*.bak
+*.backup
+
