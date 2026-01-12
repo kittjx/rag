@@ -29,7 +29,7 @@ async function loadSystemInfo() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/system/version`);
         const data = await response.json();
-        
+
         document.getElementById('backendName').textContent = data.components.llm_backend;
         document.getElementById('modelName').textContent = data.components.llm_model;
     } catch (error) {
@@ -44,10 +44,10 @@ async function loadBackends() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/v1/system/llm/backends`);
         const data = await response.json();
-        
+
         const select = document.getElementById('backendSelect');
         select.innerHTML = '';
-        
+
         data.available_backends.forEach(backend => {
             const option = document.createElement('option');
             option.value = backend.name;
@@ -73,7 +73,7 @@ async function switchBackend(backend) {
             method: 'POST'
         });
         const data = await response.json();
-        
+
         if (data.success) {
             await loadSystemInfo();
             showNotification('后端切换成功', 'success');
@@ -89,13 +89,13 @@ async function switchBackend(backend) {
 // 设置事件监听器
 function setupEventListeners() {
     const input = document.getElementById('questionInput');
-    
+
     // 自动调整输入框高度
     input.addEventListener('input', () => {
         input.style.height = 'auto';
         input.style.height = input.scrollHeight + 'px';
     });
-    
+
     // Ctrl+Enter 发送
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && e.ctrlKey) {
@@ -129,49 +129,52 @@ function askExample(question) {
 async function sendMessage() {
     const input = document.getElementById('questionInput');
     const question = input.value.trim();
-    
+
     if (!question || isProcessing) return;
-    
+
     // 清空输入框
     input.value = '';
     input.style.height = 'auto';
-    
+
     // 如果是新对话，创建ID
     if (!currentChatId) {
         currentChatId = Date.now().toString();
     }
-    
+
     // 移除欢迎消息
     const welcomeMsg = document.querySelector('.welcome-message');
     if (welcomeMsg) {
         welcomeMsg.remove();
     }
-    
+
     // 添加用户消息
     addMessage('user', question);
-    
+    saveChatMessage(currentChatId, 'user', question);
+
     // 添加助手消息占位符
     const assistantMsgId = addMessage('assistant', '', true);
-    
+
     // 禁用发送按钮
     isProcessing = true;
     updateSendButton(true);
-    
+
     // 获取设置
     const settings = getSettings();
-    
+
     try {
         if (settings.streamMode) {
             await sendStreamMessage(question, settings, assistantMsgId);
         } else {
             await sendNormalMessage(question, settings, assistantMsgId);
         }
-        
+
         // 保存到历史
         saveChatHistory(question);
     } catch (error) {
         console.error('发送消息失败:', error);
-        updateMessageContent(assistantMsgId, '抱歉，发生了错误。请稍后重试。');
+        const errorMsg = '抱歉，发生了错误。请稍后重试。';
+        updateMessageContent(assistantMsgId, errorMsg);
+        saveChatMessage(currentChatId, 'assistant', errorMsg);
     } finally {
         isProcessing = false;
         updateSendButton(false);
@@ -244,6 +247,9 @@ async function sendStreamMessage(question, settings, messageId) {
     if (sources) {
         addSourcesToMessage(messageId, sources);
     }
+
+    // 保存助手消息
+    saveChatMessage(currentChatId, 'assistant', fullText, sources);
 }
 
 // 普通消息
@@ -277,6 +283,9 @@ async function sendNormalMessage(question, settings, messageId) {
     if (data.sources) {
         addSourcesToMessage(messageId, data.sources);
     }
+
+    // 保存助手消息
+    saveChatMessage(currentChatId, 'assistant', data.answer, data.sources);
 }
 
 // 添加消息
@@ -396,6 +405,12 @@ function updateTemperatureValue(value) {
 
 // 保存对话历史
 function saveChatHistory(question) {
+    // 如果已经存在该对话记录，则不重复添加
+    const existing = chatHistory.find(h => h.id === currentChatId);
+    if (existing) {
+        return;
+    }
+
     const title = question.length > 30 ? question.substring(0, 30) + '...' : question;
 
     chatHistory.unshift({
@@ -441,10 +456,54 @@ function renderChatHistory() {
 
 // 加载对话
 function loadChat(chatId) {
-    // 这里可以实现加载历史对话的功能
-    // 目前简单地创建新对话
     currentChatId = chatId;
     renderChatHistory();
+
+    // 清空当前消息
+    const container = document.getElementById('messagesContainer');
+    container.innerHTML = '';
+
+    // 加载该对话的消息记录
+    const messages = getChatMessages(chatId);
+
+    if (messages.length > 0) {
+        messages.forEach(msg => {
+            const msgId = addMessage(msg.role, msg.content, false);
+            if (msg.sources) {
+                addSourcesToMessage(msgId, msg.sources);
+            }
+        });
+    } else {
+        // 如果没有消息（不应该发生，但在某些边缘情况下可能），显示欢迎消息
+        container.innerHTML = `
+            <div class="welcome-message">
+                <div class="welcome-icon">🤖</div>
+                <h2>新对话</h2>
+                <p>我可以基于知识库内容回答您的问题</p>
+            </div>
+        `;
+    }
+}
+
+// 保存单条消息到本地存储
+function saveChatMessage(chatId, role, content, sources = null) {
+    if (!chatId) return;
+
+    const messages = getChatMessages(chatId);
+    messages.push({
+        role,
+        content,
+        sources,
+        timestamp: Date.now()
+    });
+
+    localStorage.setItem(`chat_msgs_${chatId}`, JSON.stringify(messages));
+}
+
+// 获取对话消息记录
+function getChatMessages(chatId) {
+    const saved = localStorage.getItem(`chat_msgs_${chatId}`);
+    return saved ? JSON.parse(saved) : [];
 }
 
 // 显示通知
@@ -453,4 +512,3 @@ function showNotification(message, type = 'info') {
     console.log(`[${type}] ${message}`);
     // 可以扩展为更好的UI通知
 }
-
