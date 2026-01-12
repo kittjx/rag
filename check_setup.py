@@ -108,8 +108,10 @@ def check_env_vars():
     deepseek_key = os.getenv('DEEPSEEK_API_KEY')
     if deepseek_key:
         print(f"   ✅ DEEPSEEK_API_KEY 已设置")
+    elif os.getenv('QWEN_API_KEY'):
+        print(f"   ✅ QWEN_API_KEY 已设置")
     else:
-        print(f"   ⚠️  DEEPSEEK_API_KEY 未设置（AI功能将不可用）")
+        print(f"   ⚠️  API KEY 未设置")
     
     redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
     print(f"   ℹ️  REDIS_URL: {redis_url}")

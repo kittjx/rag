@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for RAG Knowledge Base System
 # Stage 1: Base image with Python dependencies
-FROM python:3.11-slim as base
+FROM python:3.13-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -25,7 +25,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Application
-FROM python:3.11-slim as app
+FROM python:3.13-slim AS app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -45,7 +45,7 @@ RUN useradd -m -u 1000 appuser && \
 WORKDIR /app
 
 # Copy Python packages from base stage
-COPY --from=base /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=base /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=base /usr/local/bin /usr/local/bin
 
 # Copy application code

@@ -1,9 +1,8 @@
-version: '3.8'
 
 services:
   # Redis cache service
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: rag-redis
     ports:
       - "6379:6379"
@@ -58,7 +57,7 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
       start_period: 60s

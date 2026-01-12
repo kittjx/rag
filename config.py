@@ -18,27 +18,25 @@ class Config:
     VECTOR_STORE_DIR = os.path.join(DATA_DIR, "vector_store")
 
     # 模型配置
-    EMBEDDING_MODEL = "BAAI/bge-large-zh"
-    EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, "models", "bge-large-zh")
+    # EMBEDDING_MODEL = "BAAI/bge-large-zh"
+    # EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, "models", "bge-large-zh")
+    EMBEDDING_MODEL = "BAAI/bge-m3"
+    EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, "models", "bge-m3")
 
     # 向量数据库配置
     VECTOR_DB_TYPE = "chroma"  # chroma/qdrant
-    COLLECTION_NAME = "company_knowledge"
+    COLLECTION_NAME = "conscription"
 
     # 文本分割配置
     CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "500"))
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
 
-    # DeepSeek API配置
-    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-    DEEPSEEK_API_BASE = os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com/v1")
-    DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-
     # LLM后端配置
     LLM_BACKEND = os.getenv("LLM_BACKEND", "auto")  # auto, deepseek, qwen, ollama, openai
     USE_LOCAL_LLM = os.getenv("USE_LOCAL_LLM", "false").lower() == "true"
 
-    # DeepSeek API配置 (保持向后兼容)
+    # DeepSeek API配置
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
     DEEPSEEK_API_BASE = os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com/v1")
     DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
@@ -47,14 +45,9 @@ class Config:
     QWEN_API_BASE = os.getenv("QWEN_API_BASE", "https://dashscope.aliyuncs.com/compatible-mode/v1")
     QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-turbo")
 
-    # OpenAI API配置
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-
     # Ollama配置
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:4b")
 
     # API服务配置
     API_HOST = os.getenv("API_HOST", "0.0.0.0")
@@ -63,7 +56,7 @@ class Config:
 
     # 缓存配置
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-    CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # 1小时
+    CACHE_TTL = int(os.getenv("CACHE_TTL", "259200"))  # 72小时
 
     @classmethod
     def validate(cls):
@@ -79,8 +72,8 @@ class Config:
                 Path(dir_path).mkdir(parents=True, exist_ok=True)
 
         # 检查API密钥
-        if not cls.DEEPSEEK_API_KEY:
-            warnings.append("DEEPSEEK_API_KEY 未设置，AI功能将不可用")
+        if not cls.DEEPSEEK_API_KEY and not cls.QWEN_API_KEY and not cls.OLLAMA_BASE_URL:
+            warnings.append("DEEPSEEK_API_KEY/QWEN_API_KEY/OLLAMA_BASE_URL 未设置")
 
         # 检查向量数据库
         if not os.path.exists(cls.VECTOR_STORE_DIR) or not os.listdir(cls.VECTOR_STORE_DIR):
