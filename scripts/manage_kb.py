@@ -13,6 +13,8 @@ from pathlib import Path
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# os.environ['HF_HUB_OFFLINE'] = '1'
+
 # 加载环境变量
 try:
     from dotenv import load_dotenv
@@ -148,7 +150,8 @@ def search_test(query: str, top_k: int = 5):
         print("加载嵌入模型...")
         model = SentenceTransformer(
             config.EMBEDDING_MODEL,
-            cache_folder=config.EMBEDDING_MODEL_PATH
+            cache_folder=config.EMBEDDING_MODEL_PATH,
+            local_files_only=True
         )
         
         # 连接数据库

@@ -36,6 +36,9 @@ services:
       - ./logs:/app/logs
       # Mount models (optional, can be downloaded at runtime)
       - ./models:/app/models
+      # Mount application code for live updates during development
+      - ./api:/app/api
+      - ./config.py:/app/config.py
     environment:
       # Redis configuration
       - REDIS_HOST=redis
@@ -63,25 +66,25 @@ services:
       start_period: 60s
     networks:
       - rag-network
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Web UI service
+  # Web UI service (nginx-based for static files)
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.web
     container_name: rag-web
     ports:
       - "8080:8080"
     volumes:
-      - ./web:/app/web
+      # Mount web files for live updates during development
+      - ./web:/usr/share/nginx/html:ro
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - rag-network
-    command: python3 serve_web.py
 
 volumes:
   redis-data:

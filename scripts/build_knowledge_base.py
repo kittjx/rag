@@ -3,6 +3,8 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# os.environ['HF_HUB_OFFLINE'] = '1'
+
 # 加载环境变量
 try:
     from dotenv import load_dotenv
@@ -55,7 +57,8 @@ class KnowledgeBaseBuilder:
         print("正在加载BGE嵌入模型...")
         self.embedding_model = SentenceTransformer(
             config.EMBEDDING_MODEL,
-            cache_folder=config.EMBEDDING_MODEL_PATH
+            cache_folder=config.EMBEDDING_MODEL_PATH,
+            local_files_only=True
         )
         
         # 初始化向量数据库

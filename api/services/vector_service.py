@@ -4,6 +4,9 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from config import config
 
+# import os
+# os.environ['HF_HUB_OFFLINE'] = '1'
+
 class VectorService:
     """向量检索服务（单例模式）"""
 
@@ -26,7 +29,8 @@ class VectorService:
             self.embedding_model = SentenceTransformer(
                 config.EMBEDDING_MODEL,
                 cache_folder=config.EMBEDDING_MODEL_PATH,
-                device='cpu'
+                device='cpu',
+                local_files_only=True
             )
             print("嵌入模型加载完成")
 
