@@ -443,15 +443,73 @@ function renderChatHistory() {
     list.innerHTML = '';
 
     chatHistory.forEach(chat => {
-        const item = document.createElement('button');
+        const item = document.createElement('div');
         item.className = 'history-item';
         if (chat.id === currentChatId) {
             item.classList.add('active');
         }
-        item.textContent = chat.title;
-        item.onclick = () => loadChat(chat.id);
+
+        // 点击整个条目加载对话
+        item.onclick = (e) => {
+            // 如果点击的是删除按钮，不触发加载
+            if (e.target.closest('.delete-chat-btn')) return;
+            loadChat(chat.id);
+        };
+
+        item.innerHTML = `
+            <span class="history-item-title">${chat.title}</span>
+            <button class="delete-chat-btn" onclick="deleteChat('${chat.id}', event)" title="删除">✕</button>
+        `;
+
         list.appendChild(item);
     });
+}
+
+// 删除单个对话
+function deleteChat(chatId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+
+    if (!confirm('确定要删除这个对话吗？')) {
+        return;
+    }
+
+    // 从历史记录数组中移除
+    chatHistory = chatHistory.filter(c => c.id !== chatId);
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+    // 移除消息存储
+    localStorage.removeItem(`chat_msgs_${chatId}`);
+
+    // 如果删除的是当前对话，重置界面
+    if (currentChatId === chatId) {
+        newChat();
+    }
+
+    renderChatHistory();
+}
+
+// 清除所有历史
+function clearAllHistory() {
+    if (chatHistory.length === 0) return;
+
+    if (!confirm('确定要清除所有对话历史吗？此操作不可恢复。')) {
+        return;
+    }
+
+    // 清除所有消息记录
+    chatHistory.forEach(chat => {
+        localStorage.removeItem(`chat_msgs_${chat.id}`);
+    });
+
+    // 清空历史记录
+    chatHistory = [];
+    localStorage.setItem('chatHistory', JSON.stringify([]));
+
+    // 重置界面
+    newChat();
+    renderChatHistory();
 }
 
 // 加载对话

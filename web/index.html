@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
         window.API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
     </script>
 </head>
+
 <body>
     <div class="app-container">
         <!-- 侧边栏 -->
@@ -17,22 +19,25 @@
             <div class="sidebar-header">
                 <h1>💬 知识库问答</h1>
             </div>
-            
+
             <div class="sidebar-content">
                 <!-- 新对话按钮 -->
                 <button class="new-chat-btn" onclick="newChat()">
                     <span>➕</span> 新对话
                 </button>
-                
+
                 <!-- 对话历史 -->
                 <div class="chat-history">
-                    <h3>对话历史</h3>
+                    <div class="chat-history-header">
+                        <h3>对话历史</h3>
+                        <button class="clear-history-btn" onclick="clearAllHistory()" title="清除所有历史">🗑️</button>
+                    </div>
                     <div id="historyList" class="history-list">
                         <!-- 历史记录将动态添加 -->
                     </div>
                 </div>
             </div>
-            
+
             <!-- 系统信息 -->
             <div class="sidebar-footer">
                 <div class="system-info">
@@ -50,7 +55,7 @@
                 </button>
             </div>
         </aside>
-        
+
         <!-- 主聊天区域 -->
         <main class="chat-main">
             <!-- 顶部栏 -->
@@ -62,7 +67,7 @@
                     </button>
                 </div>
             </header>
-            
+
             <!-- 消息区域 -->
             <div class="messages-container" id="messagesContainer">
                 <!-- 欢迎消息 -->
@@ -84,15 +89,11 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 输入区域 -->
             <div class="input-container">
                 <div class="input-wrapper">
-                    <textarea 
-                        id="questionInput" 
-                        placeholder="输入您的问题... (Ctrl+Enter 发送)"
-                        rows="1"
-                    ></textarea>
+                    <textarea id="questionInput" placeholder="输入您的问题... (Ctrl+Enter 发送)" rows="1"></textarea>
                     <button id="sendBtn" class="send-btn" onclick="sendMessage()">
                         <span class="send-icon">📤</span>
                     </button>
@@ -102,7 +103,7 @@
                 </div>
             </div>
         </main>
-        
+
         <!-- 设置面板 -->
         <div id="settingsPanel" class="settings-panel">
             <div class="settings-content">
@@ -110,34 +111,35 @@
                     <h3>⚙️ 设置</h3>
                     <button class="close-btn" onclick="toggleSettings()">✕</button>
                 </div>
-                
+
                 <div class="settings-body">
                     <div class="setting-group">
                         <label for="topK">检索数量 (Top K)</label>
                         <input type="range" id="topK" min="1" max="10" value="5" oninput="updateTopKValue(this.value)">
                         <span id="topKValue">5</span>
                     </div>
-                    
+
                     <div class="setting-group">
                         <label for="temperature">温度 (Temperature)</label>
-                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" oninput="updateTemperatureValue(this.value)">
+                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7"
+                            oninput="updateTemperatureValue(this.value)">
                         <span id="temperatureValue">0.7</span>
                     </div>
-                    
+
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="useCache" checked>
                             使用缓存
                         </label>
                     </div>
-                    
+
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="streamMode" checked>
                             流式响应
                         </label>
                     </div>
-                    
+
                     <div class="setting-group">
                         <label for="backendSelect">LLM 后端</label>
                         <select id="backendSelect" onchange="switchBackend(this.value)">
@@ -148,8 +150,8 @@
             </div>
         </div>
     </div>
-    
+
     <script src="app.js"></script>
 </body>
-</html>
 
+</html>
