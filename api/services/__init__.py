@@ -2,8 +2,8 @@
 """API Services Package"""
 
 from .vector_service import VectorService
-from .llm_service import DeepSeekService
 from .cache_service import CacheService
+from .unified_llm_service import UnifiedLLMService
 
-__all__ = ["VectorService", "DeepSeekService", "CacheService"]
+__all__ = ["VectorService", "CacheService", "UnifiedLLMService"]
 

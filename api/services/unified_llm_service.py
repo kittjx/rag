@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 class LLMBackend(Enum):
     DEEPSEEK = "deepseek"
     OLLAMA = "ollama"
-    OPENAI = "openai"
     QWEN = "qwen"
 
 class UnifiedLLMService:
@@ -42,15 +41,6 @@ class UnifiedLLMService:
                     "Content-Type": "application/json"
                 }
             },
-            LLMBackend.OPENAI: {
-                "base_url": config.OPENAI_API_BASE,
-                "model": config.OPENAI_MODEL,
-                "api_key": config.OPENAI_API_KEY,
-                "headers": lambda: {
-                    "Authorization": f"Bearer {config.OPENAI_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-            },
             LLMBackend.OLLAMA: {
                 "base_url": config.OLLAMA_BASE_URL,
                 "model": config.OLLAMA_MODEL,
@@ -63,7 +53,6 @@ class UnifiedLLMService:
         self.backend_health = {
             LLMBackend.DEEPSEEK: False,
             LLMBackend.QWEN: False,
-            LLMBackend.OPENAI: False,
             LLMBackend.OLLAMA: False
         }
 
@@ -96,10 +85,6 @@ class UnifiedLLMService:
             logger.info("检测到Qwen API密钥")
             return LLMBackend.QWEN
 
-        if config.OPENAI_API_KEY:
-            logger.info("检测到OpenAI API密钥")
-            return LLMBackend.OPENAI
-
         # 默认使用Ollama（本地）
         logger.warning("未检测到任何API密钥，默认使用Ollama（需要本地安装）")
         return LLMBackend.OLLAMA
@@ -130,9 +115,6 @@ class UnifiedLLMService:
             )
             self.backend_health[LLMBackend.QWEN] = bool(
                 self.configs[LLMBackend.QWEN]["api_key"]
-            )
-            self.backend_health[LLMBackend.OPENAI] = bool(
-                self.configs[LLMBackend.OPENAI]["api_key"]
             )
 
         self._backends_checked = True
@@ -179,12 +161,6 @@ class UnifiedLLMService:
         elif self.current_backend == LLMBackend.QWEN:
             async for chunk in self._call_openai_compatible(
                 messages, temperature, max_tokens, stream, backend_config, "Qwen"
-            ):
-                yield chunk
-
-        elif self.current_backend == LLMBackend.OPENAI:
-            async for chunk in self._call_openai_compatible(
-                messages, temperature, max_tokens, stream, backend_config, "OpenAI"
             ):
                 yield chunk
 
