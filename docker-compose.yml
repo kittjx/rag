@@ -23,6 +23,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # cache_from:
+      #   - rag-api:latest
     container_name: rag-api
     ports:
       - "8000:8000"
@@ -38,6 +40,7 @@ services:
       - ./models:/app/models
       # Mount application code for live updates during development
       - ./api:/app/api
+      - ./scripts:/app/scripts
       - ./config.py:/app/config.py
     environment:
       # Redis configuration

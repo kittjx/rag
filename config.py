@@ -22,6 +22,7 @@ class Config:
     # EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, "models", "bge-large-zh")
     EMBEDDING_MODEL = "BAAI/bge-m3"
     EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, "models", "bge-m3")
+    SAVE_MODEL_AFTER_DOWNLOAD = True
 
     # 向量数据库配置
     VECTOR_DB_TYPE = "chroma"  # chroma/qdrant

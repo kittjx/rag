@@ -3,14 +3,14 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# os.environ['HF_HUB_OFFLINE'] = '1'
 
-# 加载环境变量
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+import torch
+from transformers import AutoTokenizer, AutoModel
+import numpy as np
+
+from dotenv import load_dotenv
+load_dotenv()
+
 
 from config import config
 import hashlib
@@ -22,47 +22,113 @@ from datetime import datetime
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
 
-# 向量化模块
-try:
-    from sentence_transformers import SentenceTransformer
-except ImportError:
-    print("错误: 缺少 sentence-transformers 包")
-    print("请运行: pip install sentence-transformers")
-    sys.exit(1)
-
-try:
-    import chromadb
-    from chromadb.config import Settings
-except ImportError:
-    print("错误: 缺少 chromadb 包")
-    print("请运行: pip install chromadb")
-    sys.exit(1)
+import chromadb
+from chromadb.config import Settings
 
 class KnowledgeBaseBuilder:
     """知识库构建器"""
     
-    def __init__(self):
+    def __init__(self, use_local: bool = None):
         self.config = config
+
+        if use_local is None:
+            use_local = os.path.exists(config.EMBEDDING_MODEL_PATH)
         
-        # 初始化文本分割器
+        self.use_local = use_local
+        
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=config.CHUNK_SIZE,
             chunk_overlap=config.CHUNK_OVERLAP,
-            separators=["\n\n", "\n", "。", "？", "！", "；", "，", " ", ""],
+            separators=["\n\n", "\n", ".", "?", "!", ";", ",", "。", "？", "！", "；", "，", " ", ""],
             length_function=len,
             add_start_index=True
         )
-        
-        # 初始化嵌入模型
-        print("正在加载BGE嵌入模型...")
-        self.embedding_model = SentenceTransformer(
-            config.EMBEDDING_MODEL,
-            cache_folder=config.EMBEDDING_MODEL_PATH,
-            local_files_only=True
-        )
-        
-        # 初始化向量数据库
+
+        self.load_embedding_model()
+
         self.init_vector_store()
+    
+    def load_embedding_model(self):
+        """Load embedding model from local or online"""
+        print("正在加载BGE嵌入模型...")
+
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"使用设备: {self.device}")
+
+        if self.use_local:
+            # Load from local path
+            print(f"从本地加载模型: {self.config.EMBEDDING_MODEL_PATH}")
+            
+            if not os.path.exists(self.config.EMBEDDING_MODEL_PATH):
+                raise FileNotFoundError(
+                    f"本地模型路径不存在: {self.config.EMBEDDING_MODEL_PATH}\n"
+                    f"请先下载模型或使用在线模式"
+                )
+            
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.config.EMBEDDING_MODEL_PATH,
+                local_files_only=True
+            )
+            
+            self.embedding_model = AutoModel.from_pretrained(
+                self.config.EMBEDDING_MODEL_PATH,
+                local_files_only=True
+            ).to(self.device)
+            
+        else:
+            # Load from HuggingFace online
+            print(f"从HuggingFace在线加载模型: {self.config.EMBEDDING_MODEL}")
+            
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.config.EMBEDDING_MODEL
+            )
+            
+            self.embedding_model = AutoModel.from_pretrained(
+                self.config.EMBEDDING_MODEL
+            ).to(self.device)
+            
+            # Optionally save for future use
+            if hasattr(self.config, 'SAVE_MODEL_AFTER_DOWNLOAD') and self.config.SAVE_MODEL_AFTER_DOWNLOAD:
+                print(f"保存模型到本地: {self.config.EMBEDDING_MODEL_PATH}")
+                os.makedirs(self.config.EMBEDDING_MODEL_PATH, exist_ok=True)
+                self.tokenizer.save_pretrained(self.config.EMBEDDING_MODEL_PATH)
+                self.embedding_model.save_pretrained(self.config.EMBEDDING_MODEL_PATH)
+        
+        self.embedding_model.eval()
+        print("模型加载完成！")
+    
+    def encode_texts(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
+        """Encode texts to embeddings using BGE model"""
+        all_embeddings = []
+        
+        with torch.no_grad():
+            for i in range(0, len(texts), batch_size):
+                batch_texts = texts[i:i + batch_size]
+                
+                # Tokenize
+                encoded = self.tokenizer(
+                    batch_texts,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors='pt'
+                ).to(self.device)
+                
+                # Get embeddings
+                outputs = self.embedding_model(**encoded)
+                
+                # Use CLS token embedding (first token)
+                embeddings = outputs.last_hidden_state[:, 0]
+                
+                # Normalize embeddings
+                embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+                
+                all_embeddings.append(embeddings.cpu().numpy())
+                
+                if (i // batch_size + 1) % 10 == 0:
+                    print(f"已处理 {min(i + batch_size, len(texts))}/{len(texts)} 个文本")
+        
+        return np.vstack(all_embeddings)
         
     def init_vector_store(self):
         """初始化向量数据库"""
@@ -175,20 +241,29 @@ class KnowledgeBaseBuilder:
         print(f"分割为 {len(all_chunks)} 个文本块")
         return all_chunks
     
+    # def generate_embeddings(self, chunks: List[Dict]) -> List[List[float]]:
+    #     """生成文本嵌入向量"""
+    #     print("正在生成嵌入向量...")
+        
+    #     texts = [chunk["text"] for chunk in chunks]
+        
+    #     # 批量生成嵌入
+    #     embeddings = self.embedding_model.encode(
+    #         texts,
+    #         batch_size=32,
+    #         show_progress_bar=True,
+    #         normalize_embeddings=True,
+    #         convert_to_numpy=True
+    #     )
+        
+    #     return embeddings.tolist()
+    
     def generate_embeddings(self, chunks: List[Dict]) -> List[List[float]]:
         """生成文本嵌入向量"""
         print("正在生成嵌入向量...")
         
         texts = [chunk["text"] for chunk in chunks]
-        
-        # 批量生成嵌入
-        embeddings = self.embedding_model.encode(
-            texts,
-            batch_size=32,
-            show_progress_bar=True,
-            normalize_embeddings=True,
-            convert_to_numpy=True
-        )
+        embeddings = self.encode_texts(texts, batch_size=32)
         
         return embeddings.tolist()
     
