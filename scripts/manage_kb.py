@@ -8,12 +8,16 @@ import os
 import sys
 import json
 import argparse
+import warnings
 from pathlib import Path
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# os.environ['HF_HUB_OFFLINE'] = '1'
+os.environ['HF_HUB_OFFLINE'] = '1'
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
+os.environ['HF_DATASETS_OFFLINE'] = '1'
+os.environ['DISABLE_TELEMETRY'] = 'True'
 
 # 加载环境变量
 try:
@@ -144,24 +148,76 @@ def search_test(query: str, top_k: int = 5):
     print("=" * 50)
     
     try:
-        from sentence_transformers import SentenceTransformer
+        import torch
+        import numpy as np
+        from transformers import AutoTokenizer, AutoModel
+        
+        # 确定是否使用本地模型
+        use_local = os.path.exists(config.EMBEDDING_MODEL_PATH)
         
         # 加载模型
         print("加载嵌入模型...")
-        model = SentenceTransformer(
-            config.EMBEDDING_MODEL,
-            cache_folder=config.EMBEDDING_MODEL_PATH,
-            local_files_only=True
-        )
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"使用设备: {device}")
+        
+        if use_local:
+            print(f"从本地加载: {config.EMBEDDING_MODEL_PATH}")
+            
+            # Suppress the incorrect Mistral regex warning
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', message='.*fix_mistral_regex.*')
+                
+                tokenizer = AutoTokenizer.from_pretrained(
+                    config.EMBEDDING_MODEL_PATH,
+                    local_files_only=True
+                )
+            
+            model = AutoModel.from_pretrained(
+                config.EMBEDDING_MODEL_PATH,
+                local_files_only=True
+            ).to(device)
+        else:
+            print(f"从在线加载: {config.EMBEDDING_MODEL}")
+            
+            tokenizer = AutoTokenizer.from_pretrained(
+                config.EMBEDDING_MODEL
+            )
+            
+            model = AutoModel.from_pretrained(
+                config.EMBEDDING_MODEL
+            ).to(device)
+        
+        model.eval()
+        print("模型加载完成")
         
         # 连接数据库
+        print("连接向量数据库...")
         client = chromadb.PersistentClient(path=config.VECTOR_STORE_DIR)
         collection = client.get_collection(config.COLLECTION_NAME)
         
         # 生成查询向量
-        query_embedding = model.encode(query, normalize_embeddings=True).tolist()
+        print("生成查询向量...")
+        with torch.no_grad():
+            encoded = tokenizer(
+                query,
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors='pt'
+            ).to(device)
+            
+            outputs = model(**encoded)
+            
+            # Use CLS token embedding
+            embedding = outputs.last_hidden_state[:, 0]
+            
+            # Normalize
+            embedding = torch.nn.functional.normalize(embedding, p=2, dim=1)
+            
+            query_embedding = embedding.cpu().numpy()[0].tolist()
         
         # 搜索
+        print("执行搜索...")
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=top_k,
@@ -183,6 +239,8 @@ def search_test(query: str, top_k: int = 5):
         
     except Exception as e:
         print(f"❌ 搜索失败: {e}")
+        import traceback
+        traceback.print_exc()
 
 def main():
     parser = argparse.ArgumentParser(description="知识库管理工具")
@@ -207,4 +265,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

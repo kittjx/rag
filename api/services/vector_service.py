@@ -1,11 +1,12 @@
 # api/services/vector_service.py
 from typing import List, Dict, Any, Optional
+import torch
+import numpy as np
 import chromadb
-from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer, AutoModel
 from config import config
-
-# import os
-# os.environ['HF_HUB_OFFLINE'] = '1'
+import warnings
+import os
 
 class VectorService:
     """向量检索服务（单例模式）"""
@@ -24,14 +25,38 @@ class VectorService:
             return
 
         try:
+            # 确定是否使用本地模型
+            use_local = os.path.exists(config.EMBEDDING_MODEL_PATH)
+            
             # 加载嵌入模型
             print("正在加载嵌入模型...")
-            self.embedding_model = SentenceTransformer(
-                config.EMBEDDING_MODEL,
-                cache_folder=config.EMBEDDING_MODEL_PATH,
-                device='cpu',
-                local_files_only=True
-            )
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            print(f"使用设备: {self.device}")
+            
+            if use_local:
+                print(f"从本地加载模型: {config.EMBEDDING_MODEL_PATH}")
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    config.EMBEDDING_MODEL_PATH,
+                    local_files_only=True
+                )
+                
+                self.embedding_model = AutoModel.from_pretrained(
+                    config.EMBEDDING_MODEL_PATH,
+                    local_files_only=True
+                ).to(self.device)
+            else:
+                print(f"从HuggingFace在线加载模型: {config.EMBEDDING_MODEL}")
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    config.EMBEDDING_MODEL
+                )
+                
+                self.embedding_model = AutoModel.from_pretrained(
+                    config.EMBEDDING_MODEL
+                ).to(self.device)
+            
+            self.embedding_model.eval()
             print("嵌入模型加载完成")
 
             # 初始化向量数据库客户端
@@ -59,6 +84,59 @@ class VectorService:
             print(f"向量服务初始化失败: {e}")
             raise
     
+    def encode_text(self, text: str) -> np.ndarray:
+        """将单个文本编码为向量"""
+        with torch.no_grad():
+            # Tokenize
+            encoded = self.tokenizer(
+                text,
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors='pt'
+            ).to(self.device)
+            
+            # Get embeddings
+            outputs = self.embedding_model(**encoded)
+            
+            # Use CLS token embedding (first token)
+            embedding = outputs.last_hidden_state[:, 0]
+            
+            # Normalize embedding
+            embedding = torch.nn.functional.normalize(embedding, p=2, dim=1)
+            
+            return embedding.cpu().numpy()[0]
+    
+    def encode_texts(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
+        """批量将文本编码为向量"""
+        all_embeddings = []
+        
+        with torch.no_grad():
+            for i in range(0, len(texts), batch_size):
+                batch_texts = texts[i:i + batch_size]
+                
+                # Tokenize
+                encoded = self.tokenizer(
+                    batch_texts,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors='pt'
+                ).to(self.device)
+                
+                # Get embeddings
+                outputs = self.embedding_model(**encoded)
+                
+                # Use CLS token embedding (first token)
+                embeddings = outputs.last_hidden_state[:, 0]
+                
+                # Normalize embeddings
+                embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+                
+                all_embeddings.append(embeddings.cpu().numpy())
+        
+        return np.vstack(all_embeddings)
+    
     def search(
         self, 
         query: str, 
@@ -68,10 +146,7 @@ class VectorService:
         """搜索相关文档"""
         
         # 生成查询向量
-        query_embedding = self.embedding_model.encode(
-            query, 
-            normalize_embeddings=True
-        ).tolist()
+        query_embedding = self.encode_text(query).tolist()
         
         # 执行搜索
         results = self.collection.query(
@@ -101,7 +176,8 @@ class VectorService:
             return {
                 "total_chunks": count,
                 "status": "healthy",
-                "collection_name": config.COLLECTION_NAME
+                "collection_name": config.COLLECTION_NAME,
+                "device": str(self.device)
             }
         except Exception as e:
             return {
