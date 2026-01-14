@@ -43,14 +43,7 @@ logs/
 *.log
 
 # Data directories
-data/raw_documents/*
-!data/raw_documents/.gitkeep
-data/processed_chunks/*
-!data/processed_chunks/.gitkeep
-data/vector_store/*
-!data/vector_store/.gitkeep
-data/cache/*
-!data/cache/.gitkeep
+data/*
 
 # Models (large files)
 models/*
