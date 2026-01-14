@@ -92,7 +92,7 @@ async def get_version(
         "version": "1.0.0",
         "description": "基于RAG的知识库问答系统",
         "components": {
-            "embedding": "BGE-large-zh",
+            "embedding": "BGE-m3",
             "vector_db": "ChromaDB",
             "llm_backend": backend_info["current_backend"],
             "llm_model": backend_info["current_model"],

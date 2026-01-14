@@ -6,7 +6,7 @@ from datetime import datetime
 class ChatRequest(BaseModel):
     """聊天请求"""
     question: str = Field(..., description="用户问题", min_length=1, max_length=2000)
-    top_k: Optional[int] = Field(5, ge=1, le=20, description="检索文档数量")
+    top_k: int = Field(5, ge=1, le=20, description="检索文档数量")
     temperature: Optional[float] = Field(0.1, ge=0.0, le=2.0, description="温度参数")
     stream: Optional[bool] = Field(False, description="是否流式输出")
     session_id: Optional[str] = Field(None, description="会话ID")
@@ -24,7 +24,7 @@ class ChatResponse(BaseModel):
 class DocumentSearchRequest(BaseModel):
     """文档搜索请求"""
     query: str = Field(..., description="搜索查询")
-    top_k: Optional[int] = Field(5, ge=1, le=50, description="返回结果数量")
+    top_k: int = Field(5, ge=1, le=50, description="返回结果数量")
     filter_by_source: Optional[str] = Field(None, description="按来源过滤")
     filter_by_type: Optional[str] = Field(None, description="按文件类型过滤")
 

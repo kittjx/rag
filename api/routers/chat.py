@@ -62,7 +62,7 @@ async def chat(
         )
         
         # 3. 构建上下文
-        context = build_context_from_results(search_results, max_sources=3)
+        context = build_context_from_results(search_results, max_sources=request.top_k)
         
         if not context.strip():
             return ChatResponse(
@@ -138,7 +138,7 @@ async def chat_stream(
         )
         
         # 2. 构建上下文
-        context = build_context_from_results(search_results, max_sources=3)
+        context = build_context_from_results(search_results, max_sources=request.top_k)
         
         if not context.strip():
             async def no_context_stream():
@@ -161,7 +161,7 @@ async def chat_stream(
                         "score": r["score"],
                         "metadata": r["metadata"]
                     }
-                    for r in search_results[:3]
+                    for r in search_results
                 ],
                 "backend": llm_service.current_backend.value,
                 "model": llm_service.configs[llm_service.current_backend]["model"]
