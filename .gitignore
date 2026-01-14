@@ -53,8 +53,7 @@ data/cache/*
 !data/cache/.gitkeep
 
 # Models (large files)
-models/bge-large-zh/*
-!models/bge-large-zh/.gitkeep
+models/*
 
 # Testing
 .pytest_cache/
