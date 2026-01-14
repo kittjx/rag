@@ -14,7 +14,7 @@ def test_health():
     """测试健康检查"""
     print("🔍 测试健康检查...")
     try:
-        response = requests.get(f"{BASE_URL}/health")
+        response = requests.get(f"{BASE_URL}/api/v1/system/health")
         if response.status_code == 200:
             print("✅ 健康检查通过")
             return True

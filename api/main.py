@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
 # 创建FastAPI应用
 app = FastAPI(
     title="知识库问答系统API",
-    description="基于RAG的知识库问答系统，使用BGE向量化和DeepSeek API",
+    description="基于RAG的知识库问答系统",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -40,7 +40,7 @@ app = FastAPI(
 # 中间件配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应限制
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -122,8 +122,3 @@ async def root():
         "docs": "/api/docs",
         "version": "1.0.0"
     }
-
-@app.get("/health")
-async def simple_health():
-    """简易健康检查（用于负载均衡）"""
-    return {"status": "healthy", "timestamp": time.time()}
