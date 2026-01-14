@@ -135,5 +135,5 @@ async def switch_llm_backend(
     except ValueError:
         return {
             "success": False,
-            "message": f"未知的后端: {backend}，可选值: deepseek, qwen, openai, ollama"
+            "message": f"未知的后端: {backend}，可选值: deepseek, qwen, ollama"
         }

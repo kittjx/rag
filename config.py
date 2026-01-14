@@ -18,8 +18,6 @@ class Config:
     VECTOR_STORE_DIR = os.path.join(DATA_DIR, "vector_store")
 
     # 模型配置
-    # EMBEDDING_MODEL = "BAAI/bge-large-zh"
-    # EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, "models", "bge-large-zh")
     EMBEDDING_MODEL = "BAAI/bge-m3"
     EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, "models", "bge-m3")
     SAVE_MODEL_AFTER_DOWNLOAD = True

@@ -24,3 +24,7 @@ python-jose[cryptography]
 passlib[bcrypt]
 tiktoken
 psutil
+
+torch
+numpy
+transformers

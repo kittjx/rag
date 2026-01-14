@@ -5,7 +5,6 @@ import numpy as np
 import chromadb
 from transformers import AutoTokenizer, AutoModel
 from config import config
-import warnings
 import os
 
 class VectorService:
