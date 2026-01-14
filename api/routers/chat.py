@@ -22,6 +22,13 @@ def get_llm_service():
 def get_cache_service():
     return CacheService()
 
+def build_context_from_results(search_results, max_sources: int = 3) -> str:
+    """从检索结果构建上下文的辅助函数"""
+    context_parts = []
+    for i, result in enumerate(search_results[:max_sources]):
+        context_parts.append(f"[来源{i+1}] {result['text']}")
+    return "\n\n".join(context_parts)
+
 @router.post("", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
@@ -55,37 +62,36 @@ async def chat(
         )
         
         # 3. 构建上下文
-        context_parts = []
-        for i, result in enumerate(search_results[:3]):  # 取前3个最相关的
-            context_parts.append(f"[来源{i+1}] {result['text']}")
-        
-        context = "\n\n".join(context_parts)
+        context = build_context_from_results(search_results, max_sources=3)
         
         if not context.strip():
             return ChatResponse(
-                answer="抱歉，在知识库中没有找到相关信息。",
+                answer="抱歉,在知识库中没有找到相关信息。",
                 sources=[],
                 cached=False,
                 processing_time=time.time() - start_time,
                 request_id=request_id
             )
         
-        # 4. 调用DeepSeek API
-        llm_response = await llm_service.generate_with_context(
+        # 4. 构建消息并调用LLM (统一使用generate方法)
+        messages = llm_service.build_rag_messages(
             question=request.question,
             context=context
         )
         
-        if llm_response.get("error"):
-            raise HTTPException(
-                status_code=500,
-                detail=f"AI服务错误: {llm_response['message']}"
-            )
+        # 收集完整响应 (非流式)
+        response_content = ""
+        async for chunk in llm_service.generate(
+            messages=messages,
+            temperature=request.temperature,
+            stream=False
+        ):
+            response_content += chunk
         
         # 5. 缓存结果
         if request.use_cache:
             answer_to_cache = {
-                "answer": llm_response["content"],
+                "answer": response_content,
                 "sources": search_results,
                 "question": request.question
             }
@@ -101,10 +107,9 @@ async def chat(
         processing_time = time.time() - start_time
         
         return ChatResponse(
-            answer=llm_response["content"],
+            answer=response_content,
             sources=search_results,
             cached=False,
-            usage=llm_response.get("usage"),
             processing_time=processing_time,
             request_id=request_id
         )
@@ -133,39 +138,22 @@ async def chat_stream(
         )
         
         # 2. 构建上下文
-        context_parts = []
-        for i, result in enumerate(search_results[:3]):
-            context_parts.append(f"[来源{i+1}] {result['text']}")
-        
-        context = "\n\n".join(context_parts)
+        context = build_context_from_results(search_results, max_sources=3)
         
         if not context.strip():
             async def no_context_stream():
-                yield f"data: {json.dumps({'content': '抱歉，在知识库中没有找到相关信息。', 'done': True})}\n\n"
+                yield f"data: {json.dumps({'content': '抱歉,在知识库中没有找到相关信息。', 'done': True})}\n\n"
             return StreamingResponse(no_context_stream(), media_type="text/event-stream")
         
-        # 3. 流式调用DeepSeek API
+        # 3. 流式调用LLM (统一使用generate方法)
         async def stream_generator():
-            messages = [
-                {
-                    "role": "system",
-                    "content": f"""基于以下参考信息回答问题：
+            # 构建消息
+            messages = llm_service.build_rag_messages(
+                question=request.question,
+                context=context
+            )
 
-参考信息：
-{context}
-
-要求：
-1. 只基于参考信息回答
-2. 如果参考信息中没有，请说"根据提供的信息，无法回答这个问题"
-3. 回答要简洁明了"""
-                },
-                {
-                    "role": "user",
-                    "content": request.question
-                }
-            ]
-
-            # 发送初始信息（包含来源和后端信息）
+            # 发送初始信息(包括来源和后端信息)
             initial_data = {
                 "sources": [
                     {
