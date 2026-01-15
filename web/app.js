@@ -20,70 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 初始化应用
 async function initializeApp() {
-    await loadSystemInfo();
-    await loadBackends();
-}
-
-// 加载系统信息
-async function loadSystemInfo() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/system/version`);
-        const data = await response.json();
-
-        document.getElementById('backendName').textContent = data.components.llm_backend;
-        document.getElementById('modelName').textContent = data.components.llm_model;
-    } catch (error) {
-        console.error('加载系统信息失败:', error);
-        document.getElementById('backendName').textContent = '未知';
-        document.getElementById('modelName').textContent = '未知';
-    }
-}
-
-// 加载可用后端
-async function loadBackends() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/system/llm/backends`);
-        const data = await response.json();
-
-        const select = document.getElementById('backendSelect');
-        select.innerHTML = '';
-
-        data.available_backends.forEach(backend => {
-            const option = document.createElement('option');
-            option.value = backend.name;
-            option.textContent = `${backend.name} (${backend.model})`;
-            if (backend.name === data.current_backend) {
-                option.selected = true;
-            }
-            if (!backend.healthy) {
-                option.disabled = true;
-                option.textContent += ' - 不可用';
-            }
-            select.appendChild(option);
-        });
-    } catch (error) {
-        console.error('加载后端列表失败:', error);
-    }
-}
-
-// 切换后端
-async function switchBackend(backend) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/system/llm/switch/${backend}`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-
-        if (data.success) {
-            await loadSystemInfo();
-            showNotification('后端切换成功', 'success');
-        } else {
-            showNotification(data.message, 'error');
-        }
-    } catch (error) {
-        console.error('切换后端失败:', error);
-        showNotification('切换后端失败', 'error');
-    }
+    // 初始化完成
 }
 
 // 设置事件监听器

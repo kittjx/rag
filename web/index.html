@@ -40,16 +40,6 @@
 
             <!-- 系统信息 -->
             <div class="sidebar-footer">
-                <div class="system-info">
-                    <div class="info-item">
-                        <span class="label">后端:</span>
-                        <span id="backendName" class="value">加载中...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="label">模型:</span>
-                        <span id="modelName" class="value">加载中...</span>
-                    </div>
-                </div>
                 <button class="settings-btn" onclick="toggleSettings()">
                     ⚙️ 设置
                 </button>
@@ -126,13 +116,6 @@
                             <input type="checkbox" id="streamMode" checked>
                             流式响应
                         </label>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="backendSelect">LLM 后端</label>
-                        <select id="backendSelect" onchange="switchBackend(this.value)">
-                            <option value="">加载中...</option>
-                        </select>
                     </div>
                 </div>
             </div>
