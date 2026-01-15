@@ -96,9 +96,8 @@ function setupEventListeners() {
         input.style.height = input.scrollHeight + 'px';
     });
 
-    // Ctrl+Enter 发送
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && e.ctrlKey) {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
