@@ -14,11 +14,6 @@ from pathlib import Path
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-os.environ['HF_HUB_OFFLINE'] = '1'
-os.environ['TRANSFORMERS_OFFLINE'] = '1'
-os.environ['HF_DATASETS_OFFLINE'] = '1'
-os.environ['DISABLE_TELEMETRY'] = 'True'
-
 # 加载环境变量
 try:
     from dotenv import load_dotenv

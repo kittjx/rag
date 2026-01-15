@@ -1,8 +1,17 @@
-# requirements.txt
+# for api runtime
 fastapi
 uvicorn[standard]
 pydantic
 chromadb
+redis
+aiohttp
+psutil
+
+torch
+numpy
+transformers
+
+# for rag build
 langchain
 langchain-core
 langchain-text-splitters
@@ -12,19 +21,5 @@ python-docx
 openpyxl
 docx2txt
 unstructured
-
-redis
-httpx
-
 python-dotenv
-
-aiohttp
-python-multipart
-python-jose[cryptography]
-passlib[bcrypt]
 tiktoken
-psutil
-
-torch
-numpy
-transformers
