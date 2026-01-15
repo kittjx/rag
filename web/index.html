@@ -75,18 +75,6 @@
                     <div class="welcome-icon">🤖</div>
                     <h2>欢迎使用知识库问答系统</h2>
                     <p>我可以基于知识库内容回答您的问题</p>
-                    <div class="example-questions">
-                        <p>试试这些问题：</p>
-                        <button class="example-btn" onclick="askExample('什么是健康的生活方式？')">
-                            什么是健康的生活方式？
-                        </button>
-                        <button class="example-btn" onclick="askExample('如何保持良好的睡眠？')">
-                            如何保持良好的睡眠？
-                        </button>
-                        <button class="example-btn" onclick="askExample('运动对健康有什么好处？')">
-                            运动对健康有什么好处？
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -95,7 +83,7 @@
                 <div class="input-wrapper">
                     <textarea id="questionInput" placeholder="输入您的问题... (Enter 发送)" rows="1"></textarea>
                     <button id="sendBtn" class="send-btn" onclick="sendMessage()">
-                        <span class="send-icon">📤</span>
+                        <span class="send-icon">➤</span>
                     </button>
                 </div>
                 <div class="input-footer">
@@ -115,15 +103,15 @@
                 <div class="settings-body">
                     <div class="setting-group">
                         <label for="topK">检索数量 (Top K)</label>
-                        <input type="range" id="topK" min="1" max="10" value="5" oninput="updateTopKValue(this.value)">
-                        <span id="topKValue">5</span>
+                        <input type="range" id="topK" min="1" max="10" value="3" oninput="updateTopKValue(this.value)">
+                        <span id="topKValue">3</span>
                     </div>
 
                     <div class="setting-group">
                         <label for="temperature">温度 (Temperature)</label>
-                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7"
+                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.5"
                             oninput="updateTemperatureValue(this.value)">
-                        <span id="temperatureValue">0.7</span>
+                        <span id="temperatureValue">0.5</span>
                     </div>
 
                     <div class="setting-group">

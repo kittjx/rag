@@ -378,7 +378,7 @@ function getSettings() {
 function updateSendButton(disabled) {
     const btn = document.getElementById('sendBtn');
     btn.disabled = disabled;
-    btn.innerHTML = disabled ? '<span class="send-icon">⏳</span>' : '<span class="send-icon">📤</span>';
+    btn.innerHTML = disabled ? '<span class="send-icon">⏳</span>' : '<span class="send-icon">➤</span>';
 }
 
 // 滚动到底部
